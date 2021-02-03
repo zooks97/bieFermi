@@ -1,68 +1,74 @@
 #include "efermi.h"
 
-double efermi(size_t nkpts, size_t nbands,
-              double bands[nkpts][nbands], double weights[nkpts],
-              int nelecs,
-              double smearing_width, int smearing_type)
+double efermi(size_t nkpt, size_t nbnd,
+              double bands[nkpt][nbnd], double weights[nkpt],
+              int nelec,
+              double swidth, int stype)
 // calculate Fermi energy using bisection
 {
-    double eigmin, eigmax, xe0, xe1, xe2, dx, xmid, f, fmid, ef;
+    double eigmin, eigmax, x0, x1, x2, dx, xmid, f, fmid, rtb;
     int i, j, k, n;
 
-    // get eigenvalue extrema
-    eigmin = bands[0][0];
-    eigmax = bands[0][0];
-    for (i = 0; i < nkpts; i++)
+    // Get min, max eigenvalue and set as initial bounds
+    x1 = bands[0][0];
+    x2 = bands[0][0];
+    for (register int i = 0; i < nkpt; i++)
     {
-        for (j = 0; j < nbands; ++j)
+        for (register int j = 0; j < nbnd; ++j)
         {
-            if (bands[i][j] < eigmin)
-                eigmin = bands[i][j];
-            if (bands[i][j] > eigmax)
-                eigmax = bands[i][j];
+            if (bands[i][j] < x1)
+                x1 = bands[i][j];
+            if (bands[i][j] > x2)
+                x2 = bands[i][j];
         }
     }
+    x0 = (x1 + x2) * 0.5;
 
-    // set initial bounds and values
-    xe1 = eigmin;
-    xe2 = eigmax;
-    xe0 = (xe1 + xe2) * 0.5;
+    // Calculate initial f, fmid
+    f = smear(nkpt, nbnd, bands, weights, x1, nelec, swidth, stype);
+    fmid = smear(nkpt, nbnd, bands, weights, x2, nelec, swidth, stype);
 
-    // calculate initial f, fmid
-    f = smear(nkpts, nbands, bands, weights, xe1, nelecs, smearing_width, smearing_type);
-    fmid = smear(nkpts, nbands, bands, weights, xe2, nelecs, smearing_width, smearing_type);
-
-    // find xe1, xe2 which bracket the Fermi energy
-    n = 1;
-    while (f * fmid >= 0.0)
+    // Find bounds which bracket the Fermi energy
+    for (register int n; n < NMAX; ++n)
     {
-        if (n >= NMAX)
+        if (f * fmid >= 0.0)
         {
-            printf("Could not bracket Fermi energy. Is the electronic temperture too small?\n");
-            return 0.0;
+            x1 = x0 - (double)n * swidth;
+            x2 = x0 + ((double)n - 0.5) * swidth;
+            f = smear(nkpt, nbnd, bands, weights, x1, nelec, swidth, stype);
+            fmid = smear(nkpt, nbnd, bands, weights, x2, nelec, swidth, stype);
         }
-
-        n++;
-        xe1 = xe0 - (double)n * smearing_width;
-        xe2 = xe0 + ((double)n - 0.5) * smearing_width;
-
-        f = smear(nkpts, nbands, bands, weights, xe1, nelecs, smearing_width, smearing_type);
-        fmid = smear(nkpts, nbands, bands, weights, xe2, nelecs, smearing_width, smearing_type);
+        else
+        {
+            break;
+        }
     }
-
-    // set initial guess
-    if (f < 0.0)
+    if (f * fmid >= 0.0)
     {
-        ef = xe1;
-        dx = xe2 - xe1;
-    }
-    else
-    {
-        ef = xe2;
-        dx = xe1 - xe2;
+        printf("Could not bracket Fermi energy. Smearing too small?\n");
+        return 0.0;
     }
 
-    // do bisection
+    // Set initial Fermi energy guess
+    rtb = f < 0.0 ? (dx = x2 - x1, x1) : (dx = x1 - x2, x2);
+
+    // Do bisection for (register int j; j < JMAX; ++j)
+    // {
+    //     if ((fabs(dx) <= XACC) || (fmid == 0.0))
+    //     {
+    //         return rtb;
+    //     }
+    //     dx *= 0.5;
+    //     xmid = rtb + dx;
+    //     fmid = smear(nkpt, nbnd, bands, weights, xmid, nelec, swidth, stype);
+    //     if (fmid <= 0.0)
+    //     {
+    //         rtb = xmid;
+    //     }
+    // }
+    // printf("Reached maximum number of bisections.\n");
+    // return 0.0;
+
     j = 0;
     while ((fabs(dx) > XACC) && (fmid != 0.0))
     {
@@ -72,82 +78,51 @@ double efermi(size_t nkpts, size_t nbands,
             return 0.0;
         }
         dx *= 0.5;
-        xmid = ef + dx;
+        xmid = rtb + dx;
 
-        fmid = smear(nkpts, nbands, bands, weights, xmid, nelecs, smearing_width, smearing_type);
+        fmid = smear(nkpt, nbnd, bands, weights, xmid, nelec, swidth, stype);
         if (fmid <= 0.0)
-            ef = xmid;
+            rtb = xmid;
 
         j++;
     }
-
-    return ef;
+    return rtb;
 }
 
-double smear(size_t nkpts, size_t nbands,
-             double bands[nkpts][nbands], double weights[nkpts],
+double smear(size_t nkpt, size_t nbnd,
+             double bands[nkpt][nbnd], double weights[nkpt],
              double xe,
-             int nelecs, float smearing_width, int smearing_type)
+             int nelec, float swidth, int stype)
 // calculate smeared value used for bisection
 {
-    register int i, j;
     double x, z;
     SMEARING_FUNC *smearing_funcs[6] = {gaussian, fermid, delthm, spline, poshm, poshm2};
 
     z = 0.0;
-    for (i = 0; i < nkpts; ++i)
+    for (register int i = 0; i < nkpt; ++i)
     {
-        for (j = 0; j < nbands; ++j)
+        for (register int j = 0; j < nbnd; ++j)
         {
-            x = (xe - bands[i][j]) / smearing_width;
-            z += weights[i] * smearing_funcs[smearing_type - 1](x);
+            x = (xe - bands[i][j]) / swidth;
+            z += weights[i] * smearing_funcs[stype - 1](x);
         }
     }
-    return z - (double)nelecs;
+    return z - (double)nelec;
 }
 
-double *occupations(int_t nkpts, int_t nbands,
-                    double bands[nkpts][nbands], double ef,
-                    double smearing_width, int smearing_type)
-// construct occupations given ef, smearing_width, and smearing_type
-{
-    register int i, j;
-    double x;
-    double occ[nkpts][nbands];
-    SMEARING_FUNC *smearing_funcs[6] = {gaussian, fermid, delthm, spline, poshm, poshm2};
-
-    for (i = 0; i < nkpts; ++i)
-    {
-        for (j = 0; j < nbands; ++j)
-        {
-            x = (ef - bands[i, j]) / smearing_width;
-            occ[i, j] = smearing_funcs[smearing_type](x) * 0.5;
-        }
-    }
-
-    return occ;
-}
-
-// TODO: implement correction functions for each smearing type,
-// TODO: and implement similarly to `smear`
-// double smearing_correction(int_t nkpts, int_t nbands,
-//                            double bands[nkpts][nbands], double weights[nkpts],
-//                            double ef,
-//                            double smearing_width, int smearing_type)
-// // calculate smearing correction to retrieve "o-temperature" energy
-// {
-// }
+// Gaussian
 
 double gaussian(double x)
-// Gaussian
 {
     return 2.0 - erfc(x);
 }
 
-double fermid(double x)
 // Fermi-Dirac
+
+double fermid(double x)
 {
-    x = -x; // AZ: flip around x-axis so all smearing func.s called the same way
+    // AZ: flip around x-axis so all smearing func.s called the same way
+    x = -x;
     if (x > FDCUT)
         return 0.0;
     else if (x < -FDCUT)
@@ -156,8 +131,8 @@ double fermid(double x)
         return 2.0 / (1.0 + exp(x));
 }
 
-double delthm(double x)
 // Hermite delta expansion
+double delthm(double x)
 {
     if (x > HMCUT)
         return 2.0;
@@ -167,18 +142,20 @@ double delthm(double x)
         return (2.0 - erfc(x)) + x * exp(-x * x) * ISQRTPI;
 }
 
-double spline(double x)
 // Gaussian spline
+
+double spline(double x)
 {
-    x = -x; // AZ: flip around x-axis so all smearing func.s called the same way
+    // AZ: flip around x-axis so all smearing func.s called the same way
+    x = -x;
     if (x > 0.0)
-        return 2.0 * (EESQH * exp(-(x + ISQRT2) * (x + ISQRT2)));
+        return 2.0 * (HSQRTE * exp(-(x + ISQRT2) * (x + ISQRT2)));
     else
-        return 2.0 * (1.0 - EESQH * exp(-(x - ISQRT2) * (x - ISQRT2)));
+        return 2.0 * (1.0 - HSQRTE * exp(-(x - ISQRT2) * (x - ISQRT2)));
 }
 
-double poshm(double x)
 // Positive Hermite (cold I)
+double poshm(double x)
 {
     // NM: NOTE: g's are all intended to be normalized to 1!
     // NM: function = 2 * int_minf^x [g(t)] dt
@@ -190,8 +167,8 @@ double poshm(double x)
         return (2.0 - erfc(x)) + (-2.0 * POSHMA * x * x + 2.0 * x + POSHMA) * exp(-x * x) * I2SQRTPI;
 }
 
-double poshm2(double x)
 // Positive Hermite (cold II)
+double poshm2(double x)
 {
     // NM: NOTE: g's are all intended to be normalized to 1!
     // NM: function = 2 * int_minf^x [g(t)] dt

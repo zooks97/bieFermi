@@ -1,5 +1,5 @@
-#ifndef HEADER_FILE
-#define HEADER_FILE
+#ifndef EFERMI_H_
+#define EFERMI_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,8 +18,7 @@
 #define ISQRT2 0.707106781186548    // sqrt(2) / 2,  1 / sqrt(2)
 #define ISQRTPI 0.564189583547756   // 1 / sqrt(pi)
 #define I2SQRTPI 0.2820947917738781 // 1 / (2 * sqrt(pi))
-#define EESQH 0.824360635350064     // sqrt(e) / 2
-#define PIEESQQ 0.730570591330569   // sqrt(e * pi) / 4
+#define HSQRTE 0.824360635350064    // sqrt(e) / 2
 
 // smearing function pointer type
 typedef double SMEARING_FUNC(double);
@@ -40,4 +39,4 @@ double spline(double x);   // Gaussian spline
 double poshm(double x);    // Positive Hermite (cold I)
 double poshm2(double x);   // Positive Hermite (cold II)
 
-#endif
+#endif // EFERMI_H_
