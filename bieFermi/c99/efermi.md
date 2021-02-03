@@ -1,0 +1,126 @@
+FERMI ENERGY & SMEARING PACKAGE REWRITTEN IN FINAL FORM FOR
+CASTEP/CETEP USE BY A. DE VITA IN JULY 1992, STARTING FROM
+R. NEEDS VERSION
+
+COLD SMEARING, SPLINE OF GAUSSIANS, AND A CORRECTION TO METH-PAX
+INTRODUCED BY N. MARZARI (1995)
+
+FOR A DETAILED EXPLANATION OF THE SMEARING APPROACH, LOOK AT
+N. MARZARI PhD THESIS, CHAPTER 4, AND REFERENCES THEREIN:
+http://theossrv1.epfl.ch/uploads/Group/Bibliography/Nicola%20Marzari_these_04-1996.pdf
+
+Cold smearing reference: N. Marzari, D. Vanderbilt, A. De Vita
+and M. C. Payne, ``Thermal contraction and disordering of the
+Al(110) surface'', Phys. Rev. Lett. 82, 3296 (1999).
+
+Modified by A. Marrazzo (antimo.marrazzo@epfl.ch) in 2016 and 2020
+Bisection uses true min/max eigenvalues, changed tolerances
+
+Translated into C99 by A. Zadoks (austin.zadoks@epfl.ch) in 2021
+based on the version with modifications by A. Marrazzo
+
+GIVEN A SET OF WEIGHTS AND THE EIGENVALUES ASSOCIATED TO THEIR
+ASSOCIATED K-POINTS FOR BZ SAMPLING, THIS SUBROUTINE PERFORMS
+TWO TASKS:
+
+(1) DETERMINES THE FERMI LEVEL AND THE OCCUPANCY OF THE STATES
+    ACCORDING TO CHOSEN SMEARING SCHEME
+
+(2) DETERMINES THE "ENTROPY CORRECTION" TO BE ADDED TO
+    THE TOTAL ENERGY FOR RECOVERING THE ZERO-SMEARING ENERGY
+    (I.E. THE TRUE GROUND STATE ENERGY) AND PASSES IT BACK TO
+    THE MAIN CODE. NOTE THAT THIS IS NOT NEEDED FOR METH-PAX
+    OR THE COLD SMEARING
+
+THE SMEARING SCHEMES (CHOOSE ONE WITH PARAMETER ISMEAR):
+
+(1) GAUSSIAN:
+SEE: C-L FU AND K-M HO, PHYS. REV. B 28, 5480 (1983).
+THEIR IMPLEMENTATION WAS VARIATIONAL BUT *NOT* CORRECTED FOR
+SECOND ORDER DEVIATION IN SIGMA AS ALSO WAS THE SIMILAR SCHEME
+(WITH OPPOSITE SIGN DEVIATION) IN: R.J.NEEDS, R.M.MARTIN AND O.H.
+NIELSEN, PHYS. REV. B 33 , 3778 (1986).
+USING THE CORRECTION CALCULATED HEREAFTER EVERYTHING SHOULD BE OK.
+THE SMEARING FUNCTION IS A GAUSSIAN NORMALISED TO 2.
+THE OCCUPATION FUNCTION IS THE ASSOCIATED COMPLEMENTARY
+ERROR FUNCTION.
+
+(2) FERMI-DIRAC:
+SEE: M.J.GILLAN J. PHYS. CONDENS. MATTER 1, 689 (1989), FOLLOWING
+THE SCHEME OUTLINED IN J.CALLAWAY AND N.H.MARCH, SOLID STATE PHYS. 38,
+136 (1984), AFTER D.N.MERMIN, PHYS. REV 137, A1441 (1965).
+THE OCCUPATION FUNCTION IS TWICE THE SINGLE ELECTRON
+FERMI-DIRAC DISTRIBUTION.
+
+(3) HERMITE-DELTA_EXPANSION:
+SEE: METHFESSEL AND PAXTON, PHYS. REV.B 40, 3616 (1989).
+THE SMEARING FUNCTION IS A TRUNCATED EXPANSION OF DIRAC'S DELTA
+IN HERMITE POLINOMIALS.
+FOR THE SMEARING FUNCTION IMPLEMENTED HERE THE TRUNCATION IS
+AT THE FIRST NON-TRIVIAL EXPANSION TERM D1(X).
+THE OCCUPATION FUNCTION IS THE ASSOCIATED PRIMITIVE.
+(NOTE: THE OCCUPATION FUNCTION IS NEITHER MONOTONIC NOR LIMITED
+BETWEEN 0. AND 2. : PLEASE CHECK THE COMPATIBILITY OF THIS WITH
+YOUR CODE'S VERSION AND VERIFY IN A TEST CALCULATION THAT THE
+FERMI LEVEL IS *UNIQUELY* DETERMINED).
+
+THE ENTROPY CORRECTION HOLDS UP TO THE THIRD ORDER IN DELTA AT LEAST,
+AND IS NOT NECESSARY (PUT = 0.) FOR THE HERMITE_DELTA EXPANSION,
+SINCE THE LINEAR ENTROPY TERM IN SIGMA IS ZERO BY CONSTRUCTION
+IN THAT CASE. (well, we still need the correct free energy. hence
+delcor is set to its true value, nmar)
+
+(4) GAUSSIAN SPLINES:
+similar to a Gaussian smearing, but does not require the
+function inversion to calculate the gradients on the occupancies.
+It is thus to be preferred in a scheme in which the occ are
+independent variables (not in castep/cetep) (N. Marzari)
+
+(5) POSITIVE HERMITE, or COLD SMEARING I
+similar to Methfessel-Paxton (that is killing the linear order
+in the entropy), but with positive-definite occupations (still
+greater than 1) ! (N. Marzari)
+
+(6) POSITIVE HERMITE, or COLD SMEARING II: the one to use.
+(5) and (6) are practically identical; (6) is more elegant.
+Phys. Rev. Lett. 82, 3296 (1999).
+
+PLEASE INQUIRE WITH ADV/NMAR FOR REFERENCE & SUGGESTIONS IF
+YOU PLAN TO USE THE PRESENT CORRECTED BZ SAMPLING SCHEME
+nicola.marzari@epfl.ch (was marzari@princeton.edu)
+alessandro.de_vita@kcl.ac.uk (was alessandro.devita@epfl.ch)
+
+```
+nelecs .......... NUMBER OF ELECTRONS PER UNIT CELL
+nbands .......... NUMBER OF BANDS FOR EACH K-POINT
+smearing_width .. WIDTH OF GAUSSIAN SMEARING FUNCTION
+nkpts ........... NUMBER OF K-POINTS
+weights ......... THE WEIGHT OF EACH K-POINT
+occs ............ THE OCCUPANCY OF EACH STATE
+ef .............. THE FERMI ENERGY
+
+smearing_type
+      = 1 GAUSSIAN BROADENING
+      = 2 FERMI-DIRAC BROADENING
+      = 3 HERMITE EXPANSION (1ST ORD.) (right delcor now, nmar)
+      = 4 SPLINE OF GAUSSIANS (nmar)
+      = 5 COLD SMEARING I (nmar)
+      = 6 COLD SMEARING II (nmar)
+
+smcor    THE CORRECTION. PASSED BACK IN SORT(1) (= SORT(1,1))
+          TO BE COMPATIBLE WITH OLD VERSIONS OF THE CODE. IF
+          YOUR CODE DOES NOT DO IT ALREADY, ADD SORT(1) TO
+          CORRECT THE TOTAL ENERGY IN YOUR MAIN.FORTRAN , WHICH
+          SHOULD CALL ANYWAY THIS ROUTINE CORRECTLY.
+```
+CHANGED: -TS goes into enocc (nmar)
+also: the correction is needed for 1,2 and 4 only
+
+ANOTHER NOTE:
+Thanks to the possible > 2 or < 0
+orbital occupancies in the general case of smearing function,
+(e.g. in the M-P case) the algorithm to find EF has been
+chosen to be the robust bisection method (from Numerical
+Recipes) to allow for non monotonic relation between total
+NEL (see above) and EF. One value for EF which solves
+NEL(EF) - Z = 0   is always found.

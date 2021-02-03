@@ -1,0 +1,68 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module efermif08 ! in 
+    interface  ! in :efermif08
+        module efermif08 ! in :efermif08:efermi.f08
+            double precision, private,parameter,optional :: xacc=1e-06
+            integer, private,parameter,optional :: nmax=100000
+            integer, private,parameter,optional :: jmax=10000
+            double precision, private,parameter,optional :: fdcut=30.0
+            double precision, private,parameter,optional :: hmcut=10.0
+            double precision, private,parameter,optional :: poshma=-0.5634
+            double precision, private,parameter,optional :: sqrt2=1.414213562373095
+            double precision, private,parameter,optional :: isqrt2=0.707106781186548
+            double precision, private,parameter,optional :: isqrtpi=0.564189583547756
+            double precision, private,parameter,optional :: i2sqrtpi=0.2820947917738781
+            double precision, private,parameter,optional :: hsqrte=0.824360635350064
+            function efermi(nkpt,nbnd,bands,weights,nelec,swidth,stype) result (rtb) ! in :efermif08:efermi.f08:efermif08
+                integer, optional,intent(in),check(shape(bands,0)==nkpt),depend(bands) :: nkpt=shape(bands,0)
+                integer, optional,intent(in),check(shape(bands,1)==nbnd),depend(bands) :: nbnd=shape(bands,1)
+                double precision dimension(nkpt,nbnd),intent(in) :: bands
+                double precision dimension(nkpt),intent(in),depend(nkpt) :: weights
+                integer intent(in) :: nelec
+                double precision intent(in) :: swidth
+                integer intent(in) :: stype
+                double precision :: rtb
+            end function efermi
+            function smear(nkpt,nbnd,bands,weights,xe,nelec,swidth,stype) result (z) ! in :efermif08:efermi.f08:efermif08
+                integer, optional,intent(in),check(shape(bands,0)==nkpt),depend(bands) :: nkpt=shape(bands,0)
+                integer, optional,intent(in),check(shape(bands,1)==nbnd),depend(bands) :: nbnd=shape(bands,1)
+                double precision dimension(nkpt,nbnd),intent(in) :: bands
+                double precision dimension(nkpt),intent(in),depend(nkpt) :: weights
+                double precision intent(in) :: xe
+                integer intent(in) :: nelec
+                double precision intent(in) :: swidth
+                integer intent(in) :: stype
+                double precision :: z
+            end function smear
+            function gauss(x) result (y) ! in :efermif08:efermi.f08:efermif08
+                double precision intent(in) :: x
+                double precision :: y
+            end function gauss
+            function fermid(x) result (y) ! in :efermif08:efermi.f08:efermif08
+                double precision intent(in) :: x
+                double precision :: y
+            end function fermid
+            function delthm(x) result (y) ! in :efermif08:efermi.f08:efermif08
+                double precision intent(in) :: x
+                double precision :: y
+            end function delthm
+            function spline(x) result (y) ! in :efermif08:efermi.f08:efermif08
+                double precision intent(in) :: x
+                double precision :: y
+            end function spline
+            function poshm(x) result (y) ! in :efermif08:efermi.f08:efermif08
+                double precision intent(in) :: x
+                double precision :: y
+            end function poshm
+            function poshm2(x) result (y) ! in :efermif08:efermi.f08:efermif08
+                double precision intent(in) :: x
+                double precision :: y
+            end function poshm2
+        end module efermif08
+    end interface 
+end python module efermif08
+
+! This file was auto-generated with f2py (version:2).
+! See http://cens.ioc.ee/projects/f2py2e/
