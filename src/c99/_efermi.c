@@ -1,3 +1,4 @@
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include "efermi.c"
@@ -9,19 +10,31 @@ static char efermi_docstring[] =
     "Find the Fermi energy using bisection.";
 
 // Available functions
-static PyMethodDef module_methods[] = {
+static PyMethodDef ModuleMethods[] = {
     {"efermi", efermi_efermi, METH_VARARGS, efermi_docstring},
-    {NULL, NULL, 0, NULL}}
+    {NULL, NULL, 0, NULL} // Sentinel
+};
 
-// Initialize the module
-PyMODINIT_FUNC init_efermi(void)
+// Module definition
+static struct PyModuleDef module_def = {
+    PyModuleDef_HEAD_INIT,
+    "efermi", // name
+    module_docstring, // doc
+    -1, // size
+    ModuleMethods, // methods
+    NULL,
+    NULL,
+    NULL,
+    NULL
+};
+
+// Module initialization
+PyMODINIT_FUNC PyInit_efermi(void)
 {
-    PyObject m * = Py_InitModule3("_efermi", module_methods, module_docstring);
-    if (m == NULL)
-        return;
-
     // Load `numpy`
     import_array();
+
+    return PyModule_Create(&module_def)
 }
 
 static PyObject *efermi_efermi(PyObject *self, PyObject *args)
@@ -47,8 +60,8 @@ static PyObject *efermi_efermi(PyObject *self, PyObject *args)
     }
 
     // Get dimensions
-    int nkpt = (int)PyArray_DIM(bands_array, 0);
-    int nbnd = (int)PyArray_DIM(bands_array, 1);
+    size_t nkpt = (size_t)PyArray_DIM(bands_array, 0);
+    size_t nbnd = (size_t)PyArray_DIM(bands_array, 1);
 
     // Get pointers to the data as C-types
     double *bands = (double *)PyArray_DATA(bands_array);
