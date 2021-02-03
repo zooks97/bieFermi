@@ -24,10 +24,10 @@
 typedef double SMEARING_FUNC(double);
 
 // bisection
-double efermi(size_t nkpts, size_t nbands, double bands[nkpts][nbands],
-    double weights[nkpts], int nelecs, double smearing_width, int smearing_type); // Fermi energy
-double smear(size_t nkpts, size_t nbands, double bands[nkpts][nbands],
-    double weights[nkpts], double x, int nelecs, float smearing_width, int smearing_type); // calculate smeared band
+double efermi(size_t nkpt, size_t nbnd, double bands[nkpt][nbnd],
+    double weights[nkpt], int nelecs, double swidth, int stype); // Fermi energy
+double smear(size_t nkpt, size_t nbnd, double bands[nkpt][nbnd],
+    double weights[nkpt], double x, int nelecs, float swidth, int stype); // calculate smeared band
 
 // smearing
 static inline double gaussian(double x); // Gaussian
