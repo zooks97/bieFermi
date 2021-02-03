@@ -4,13 +4,13 @@ module efermif08
 
     double precision, parameter :: XACC = 1.d-6
     integer, parameter :: NMAX = 100000, JMAX = 10000
-    double precision, parameter :: FDCUT = 30.0, HMCUT = 10.0
-    double precision, parameter :: POSHMA = -0.5634
-    double precision, parameter :: SQRT2 = 1.414213562373095
-    double precision, parameter :: ISQRT2 = 0.707106781186548
-    double precision, parameter :: ISQRTPI = 0.564189583547756   
-    double precision, parameter :: I2SQRTPI = 0.2820947917738781
-    double precision, parameter :: HSQRTE = 0.824360635350064   
+    double precision, parameter :: FDCUT = 30.d0, HMCUT = 10.d0
+    double precision, parameter :: POSHMA = -0.5634d0
+    double precision, parameter :: SQRT2 = 1.414213562373095d0
+    double precision, parameter :: ISQRT2 = 0.707106781186548d0
+    double precision, parameter :: ISQRTPI = 0.564189583547756d0   
+    double precision, parameter :: I2SQRTPI = 0.2820947917738781d0
+    double precision, parameter :: HSQRTE = 0.824360635350064d0   
 
     public :: efermi, smear, gauss, fermid, delthm, spline, poshm, poshm2
 
@@ -26,7 +26,7 @@ function efermi(nkpt, nbnd, bands, weights, nelec, swidth, stype) result(rtb)
     ! Get min, max eigenvalue and set as initial bounds
     x1 = minval(bands)
     x2 = maxval(bands)
-    x0 = (x1 + x2) * 0.d5
+    x0 = (x1 + x2) * 0.5d0
 
     ! Calculate initial f, fmid
     f = smear(nkpt, nbnd, bands, weights, x1, nelec, swidth, stype)
@@ -36,7 +36,7 @@ function efermi(nkpt, nbnd, bands, weights, nelec, swidth, stype) result(rtb)
     do n = 1, NMAX
         if (f * fmid >= 0.d0) then
             x1 = x0 - dble(n) * swidth
-            x2 = x0 + (dble(n) - 0.d5) * swidth
+            x2 = x0 + (dble(n) - 0.5d0) * swidth
             f = smear(nkpt, nbnd, bands, weights, x1, nelec, swidth, stype)
             fmid = smear(nkpt, nbnd, bands, weights, x2, nelec, swidth, stype)
         else
@@ -63,7 +63,7 @@ function efermi(nkpt, nbnd, bands, weights, nelec, swidth, stype) result(rtb)
         if ((abs(dx) <= XACC) .or. (fmid == 0.d0)) then
             return
         end if
-        dx = dx * 0.d5
+        dx = dx * 0.5d0
         xmid = rtb + dx
         fmid = smear(nkpt, nbnd, bands, weights, xmid, nelec, swidth, stype)
         if (fmid <= 0.d0) then
@@ -118,78 +118,79 @@ function smear(nkpt, nbnd, bands, weights, xe, nelec, swidth, stype) result(z)
     return
 end function smear
 
-pure function gauss(x) result(y)
+function gauss(x) result(y)
     implicit none
     double precision, intent(in) :: x
     double precision :: y
-    y = 2.0 - erfc(x)
+    y = 2.d0 - erfc(x)
     return
 end function gauss
 
-pure function fermid(x) result(y)
+function fermid(x) result(y)
     implicit none
     double precision, intent(in) :: x
     double precision :: y
     if (-x > FDCUT) then
-        y = 0.0
+        y = 0.d0
     else if (-x < -FDCUT) then
-        y = 2.0
+        y = 2.d0
     else
-        y = 2.0 / (1.0 + exp(-x))
+        y = 2.d0 / (1.d0 + exp(-x))
     end if
     return
 end function fermid
 
-pure function delthm(x) result(y)
+function delthm(x) result(y)
     implicit none
     double precision, intent(in) :: x
     double precision :: y
     if (x > HMCUT) then
-        y = 2.0
+        y = 2.d0
     else if (x < -HMCUT) then
-        y = 0.0
+        y = 0.d0
     else
-        y = (2.0 - erfc(x)) + x * exp(-x * x) * ISQRTPI
+        y = (2.d0 - erfc(x)) + x * exp(-x * x) * ISQRTPI
     end if
     return
 end function delthm
 
-pure function spline(x) result(y)
+function spline(x) result(y)
     implicit none
     double precision, intent(in) :: x
     double precision :: y
-    if (-x > 0.0) then
-        y = 2.0 * (HSQRTE * exp(-(x + ISQRT2)**2))
+    if (-x > 0.d0) then
+        y = HSQRTE * exp(-(x + ISQRT2)**2)
     else
-        y = 2.0 * (1.d0 - HSQRTE * exp(-(x - ISQRT2)**2))
+        y = 1.d0 - HSQRTE * exp(-(x - ISQRT2)**2)
     end if
+    y = 2.d0 * y
     return
 end function spline
 
-pure function poshm(x) result(y)
+function poshm(x) result(y)
     implicit none
     double precision, intent(in) :: x
     double precision :: y
     if (x > HMCUT) then
-        y = 2.0
+        y = 2.d0
     else if (x < -HMCUT) then
-        y = 0.0
+        y = 0.d0
     else
-        y = (2.d0 - erfc(x)) + (-2.0 * POSHMA * x**2 + 2.0 * x + POSHMA) * exp(-x**2) * I2SQRTPI
+        y = (2.d0 - erfc(x)) + (-2.d0 * POSHMA * x**2 + 2.d0 * x + POSHMA) * exp(-x**2) * I2SQRTPI
     end if
     return
 end function poshm
 
-pure function poshm2(x) result(y)
+function poshm2(x) result(y)
     implicit none
     double precision, intent(in) :: x
     double precision :: y
     if (x > HMCUT) then
-        y = 2.0
+        y = 2.d0
     else if (x < -HMCUT) then
-        y = 0.0
+        y = 0.d0
     else
-        y = (2.0 - erfc(x - ISQRT2)) + SQRT2 * exp(-x**2 + SQRT2 * x - 0.5) * ISQRTPI
+        y = (2.d0 - erfc(x - ISQRT2)) + SQRT2 * exp(-x**2 + SQRT2 * x - 0.5d0) * ISQRTPI
     end if
     return
 end function poshm2
