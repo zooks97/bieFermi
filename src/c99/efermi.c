@@ -1,10 +1,10 @@
 #include "efermi.h"
 
+// Find Fermi energy using bisection
 double efermi(size_t nkpt, size_t nbnd,
               double bands[nkpt][nbnd], double weights[nkpt],
               int nelec,
               double swidth, int stype)
-// calculate Fermi energy using bisection
 {
     double eigmin, eigmax, x0, x1, x2, dx, xmid, f, fmid, rtb;
     int i, j, k, n;
@@ -71,11 +71,11 @@ double efermi(size_t nkpt, size_t nbnd,
     return rtb;
 }
 
+// Calculate smeared value used for bisection
 double smear(size_t nkpt, size_t nbnd,
              double bands[nkpt][nbnd], double weights[nkpt],
              double xe,
              int nelec, float swidth, int stype)
-// calculate smeared value used for bisection
 {
     double x, z;
     SMEARING_FUNC *smearing_funcs[6] = {gaussian, fermid, delthm, spline, poshm, poshm2};
