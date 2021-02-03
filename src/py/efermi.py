@@ -1,144 +1,128 @@
 import numpy as np
+from scipy.special import erfc
 
-XACC = 1e-6
-JMAX = 50
-NMAX = 50
-FDCUT = 30
-HMCUT = 10
-POSHMA = -0.5634
-
-PI = np.pi
-EE = np.e
-SQRT2 = np.sqrt(2)
-SQRTPI = np.sqrt(np.pi)
-EESH = np.sqrt(np.e) / 2
-SQ2I = np.sqrt(2) / 2
-PIEESQQ = np.sqrt(np.e * np.pi) / 4
+FDCUT = 30.0  # Fermi-Dirac cutoff
+HMCUT = 10.0  # Hermite cutoff
+POSHMA = -0.5634  # Positive Hermite (cold I) `a`
 
 
-def efermi(bands, weights, nelecs, smearing_width, smearing_type):
-    eigmin = np.min(bands)
-    eigmax = np.max(bands)
+def efermi(bands,
+           weights,
+           nelec: int,
+           swidth: float,
+           stype: int,
+           xacc: float = 1.0e-6,
+           jmax: int = 10000,
+           nmax: int = 100000) -> float:
+    """Find the Fermi energy using bisection."""
+    # Get min, max eigenvalue and set as initial bounds
+    x1 = np.min(bands)
+    x2 = np.max(bands)
+    x0 = (x1 + x2) / 2
 
-    # print("n xe1      xe2      f          fmid       f * fmid")
+    # Calculate initial f, fmid
+    f = smear(bands, weights, x1, nelec, swidth, stype)
+    fmid = smear(bands, weights, x2, nelec, swidth, stype)
 
-    xe1 = eigmin
-    xe2 = eigmax
-    xe0 = (xe1 + xe2) / 2
-    n = 1
+    # Find bounds which bracket the Fermi energy
+    for n in range(1, nmax):
+        if f * fmid >= 0:
+            x1 = x0 - n * swidth
+            x2 = x0 + (n - 0.5) * swidth
+            f = smear(bands, weights, x1, nelec, swidth, stype)
+            fmid = smear(bands, weights, x2, nelec, swidth, stype)
+        else:
+            break
+    if f * fmid >= 0:
+        raise Exception("Could not bracket Fermi energy. Smearing too small?")
 
-    f = smear(bands, weights, xe1, nelecs, smearing_width, smearing_type)
-    fmid = smear(bands, weights, xe2, nelecs, smearing_width, smearing_type)
-
-    # print(f"{n} {xe1:0.6f} {xe2:0.6f} {f:0.6f} {fmid:0.6f} {f * fmid:0.6f}")
-
-    while f * fmid >= 0:
-        if n >= NMAX:
-            raise Exception(
-                "Could not bracket Fermi energy. Is the electronic temperature too small?"
-            )
-
-        n += 1
-        xe1 = xe0 - n * smearing_width
-        xe2 = xe0 + (n - 0.5) * smearing_width
-
-        f = smear(bands, weights, xe1, nelecs, smearing_width, smearing_type)
-        fmid = smear(bands, weights, xe2, nelecs, smearing_width,
-                     smearing_type)
-
-        # print(
-        #     f"{n} {xe1:0.6f} {xe2:0.6f} {f:0.6f} {fmid:0.6f} {f * fmid:0.6f}")
-
-    if f < 0:
-        rtbis = xe1
-        dx = xe2 - xe1
+    # Set initial fermi energy guess
+    if f < 0.0:
+        dx = x2 - x1
+        rtb = x1
     else:
-        rtbis = xe2
-        dx = xe1 - xe2
+        dx = x1 - x2
+        rtb = x2
 
-    j = 0
-    while (np.abs(dx) > XACC) and (fmid != 0):
-        if j >= JMAX:
-            raise Exception("Reached maximum number of bisections.")
-
-        dx *= 0.5
-        xmid = rtbis + dx
-
-        fmid = smear(bands, weights, xmid, nelecs, smearing_width,
-                     smearing_type)
-
+    for _ in range(jmax):
+        if np.abs(dx) <= xacc or fmid == 0:
+            return rtb
+        dx = dx * 0.5
+        xmid = rtb + dx
+        fmid = smear(bands, weights, xmid, nelec, swidth, stype)
         if fmid <= 0:
-            rtbis = xmid
-
-        j += 1
-
-    ef = rtbis
-
-    return ef
+            rtb = xmid
+    raise Exception("Reached maximum number of bisections.")
 
 
-def smear(bands, weights, xe, nelecs, smearing_width, smearing_type):
-    z = 0
-    for i, kpt in enumerate(bands):
-        for j, eigval in enumerate(kpt):
-            x = (xe - eigval) / smearing_width
-            if smearing_type == 1:
-                z += weights[i] * (2 - np.erfc(x))
-            elif smearing_type == 2:
-                z += weights[i] * fermid(-x)
-            elif smearing_type == 3:
-                z += weights[i] * delthm(x)
-            elif smearing_type == 4:
-                z += weights[i] * spline(-x)
-            elif smearing_type == 5:
-                z += weights[i] * poshm(x)
-            elif smearing_type == 6:
-                z += weights[i] * poshm2(x)
-            else:
-                raise Exception(f"Unknown smearing type `{smearing_type}`.")
-    return z - nelecs
+def smear(bands, weights, xe: float, nelec: int, swidth: float,
+          stype: int) -> float:
+    """Calculate smeared value used for bisection."""
+    sfuncs = [gaussian, fermid, delthm, spline, poshm, poshm2]
+
+    nkpt, nbnd = bands.shape
+
+    z = 0.0
+    for i in range(nkpt):
+        for j in range(nbnd):
+            x = (xe - bands[i, j]) / swidth
+            z += weights[i] * sfuncs[stype - 1](x)
+    return z - nelec
 
 
-def fermid(xx):
-    if xx > FDCUT:
-        return 0
-    elif xx < -FDCUT:
-        return 2
+def gaussian(x: float) -> float:
+    """Gaussian."""
+    return 2.0 - erfc(x)
+
+
+def fermid(x: float) -> float:
+    """Fermi-Dirac."""
+    x = -x
+    if x > FDCUT:
+        return 0.0
+    elif x < -FDCUT:
+        return 2.0
     else:
-        return 2 / (1 + np.exp(xx))
+        return 2.0 / (1.0 + np.exp(x))
 
 
-def delthm(xx):
-    if xx > HMCUT:
-        return 2
-    elif xx < -HMCUT:
-        return 0
-    else:
-        return (2 - np.erfc(xx)) + xx * np.exp(-xx * xx) / SQRTPI
-
-
-def spline(x):
-    if x > 0:
-        return 2 * (EESH * np.exp(-(x + SQ2I) * -(x + SQ2I)))
-    else:
-        return 2 * (1.0 - EESH * np.exp(-(x + SQ2I) * -(x + SQ2I)))
-
-
-def poshm(x):
+def delthm(x: float) -> float:
+    """Hermite delta expansion."""
     if x > HMCUT:
-        return 2
+        return 2.0
     elif x < -HMCUT:
-        return 0
+        return 0.0
     else:
-        return (2 - np.erfc(x)) + (-2 * POSHMA * x * x + 2 * x +
-                                   POSHMA) * np.exp(-x * x) / SQRTPI / 2
+        return (2.0 -erfc(x)) + x * np.exp(-x**2) / np.sqrt(np.pi)
 
 
-def poshm2(x):
+def spline(x: float) -> float:
+    """Gaussian spline."""
+    x = -x
+    if x > 0.0:
+        fx = np.sqrt(np.e) / 2 * np.exp(-(x + np.sqrt(2.0) / 2.0)**2)
+    else:
+        fx = 1.0 - np.sqrt(np.e) / 2 * np.exp(-(x - np.sqrt(2.0 / 2.0))**2)
+    return 2.0 * fx
+
+
+def poshm(x: float) -> float:
+    """Positive Hermite (cold I)."""
     if x > HMCUT:
-        return 2
+        return 2.0
     elif x < -HMCUT:
-        return 0
+        return 0.0
     else:
-        return (2 - np.erfc(x - 1 / SQRT2)
-                ) + SQRT2 * np.exp(-x * x + SQRT2 * x - 0.5) / SQRTPI
+        return (2.0 - erfc(x)) + (-2.0 * POSHMA * x * x + 2.0 * x + POSHMA
+                                     ) * np.exp(-x * x) / np.sqrt(np.pi) / 2.0
+
+
+def poshm2(x: float) -> float:
+    """Positive Hermite (cold II)."""
+    if x > HMCUT:
+        return 2.0
+    elif x < -HMCUT:
+        return 0.0
+    else:
+        return (2.0 - erfc(x - 1.0 / np.sqrt(2.0))) + np.sqrt(2.0) * np.exp(
+            -x**2 + np.sqrt(2.0) * x - 0.5) / np.sqrt(np.pi)

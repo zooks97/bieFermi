@@ -1,13 +1,10 @@
 #include "efermi.h"
 
 // Find Fermi energy using bisection
-double efermi(size_t nkpt, size_t nbnd,
-              double bands[nkpt][nbnd], double weights[nkpt],
-              int nelec,
-              double swidth, int stype)
+double efermi(size_t nkpt, size_t nbnd, double bands[nkpt][nbnd],
+    double weights[nkpt], int nelec, double swidth, int stype)
 {
-    double eigmin, eigmax, x0, x1, x2, dx, xmid, f, fmid, rtb;
-    int i, j, k, n;
+    double x0, x1, x2, dx, xmid, f, fmid, rtb;
 
     // Get min, max eigenvalue and set as initial bounds
     x1 = bands[0][0];
@@ -29,7 +26,7 @@ double efermi(size_t nkpt, size_t nbnd,
     fmid = smear(nkpt, nbnd, bands, weights, x2, nelec, swidth, stype);
 
     // Find bounds which bracket the Fermi energy
-    for (register int n; n < NMAX; ++n)
+    for (register int n = 1; n < NMAX; ++n)
     {
         if (f * fmid >= 0.0)
         {
@@ -72,10 +69,8 @@ double efermi(size_t nkpt, size_t nbnd,
 }
 
 // Calculate smeared value used for bisection
-double smear(size_t nkpt, size_t nbnd,
-             double bands[nkpt][nbnd], double weights[nkpt],
-             double xe,
-             int nelec, float swidth, int stype)
+double smear(size_t nkpt, size_t nbnd, double bands[nkpt][nbnd],
+    double weights[nkpt], double xe, int nelec, float swidth, int stype)
 {
     double x, z;
     SMEARING_FUNC *smearing_funcs[6] = {gaussian, fermid, delthm, spline, poshm, poshm2};
