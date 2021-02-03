@@ -32,11 +32,11 @@ double smear(size_t nkpts, size_t nbands,
              double x, int nelecs, float smearing_width, int smearing_type); // calculate smeared band
 
 // smearing
-double gaussian(double x); // Gaussian
-double fermid(double x);   // Fermi-Dirac
-double delthm(double x);   // Hermite delta
-double spline(double x);   // Gaussian spline
-double poshm(double x);    // Positive Hermite (cold I)
-double poshm2(double x);   // Positive Hermite (cold II)
+static inline double gaussian(double x); // Gaussian
+static inline double fermid(double x);   // Fermi-Dirac
+static inline double delthm(double x);   // Hermite delta
+static inline double spline(double x);   // Gaussian spline
+static inline double poshm(double x);    // Positive Hermite (cold I)
+static inline double poshm2(double x);   // Positive Hermite (cold II)
 
 #endif // EFERMI_H_

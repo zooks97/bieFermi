@@ -53,43 +53,21 @@ double efermi(size_t nkpt, size_t nbnd,
     rtb = f < 0.0 ? (dx = x2 - x1, x1) : (dx = x1 - x2, x2);
 
     // Do bisection
-
-    // TODO: This is _way_ faster (~10x), but gives different answer or doesn't
-    // TODO: converge
-    // for (register int j; j < JMAX; ++j)
-    // {
-    //     if ((fabs(dx) <= XACC) || (fmid == 0.0))
-    //     {
-    //         return rtb;
-    //     }
-    //     dx *= 0.5;
-    //     xmid = rtb + dx;
-    //     fmid = smear(nkpt, nbnd, bands, weights, xmid, nelec, swidth, stype);
-    //     if (fmid <= 0.0)
-    //     {
-    //         rtb = xmid;
-    //     }
-    // }
-    // printf("Reached maximum number of bisections.\n");
-    // return rtb;
-
-    j = 0;
-    while ((fabs(dx) > XACC) && (fmid != 0.0))
+    for (register int j = 0; j < JMAX; ++j)
     {
-        if (j >= JMAX)
+        if ((fabs(dx) <= XACC) || (fmid == 0.0))
         {
-            printf("Reached maximum number of bisections.\n");
-            return 0.0;
+            return rtb;
         }
-        dx *= 0.5;
+        dx = dx * 0.5;
         xmid = rtb + dx;
-
         fmid = smear(nkpt, nbnd, bands, weights, xmid, nelec, swidth, stype);
         if (fmid <= 0.0)
+        {
             rtb = xmid;
-
-        j++;
+        }
     }
+    printf("Reached maximum number of bisections.\n");
     return rtb;
 }
 
@@ -108,20 +86,20 @@ double smear(size_t nkpt, size_t nbnd,
         for (register int j = 0; j < nbnd; ++j)
         {
             x = (xe - bands[i][j]) / swidth;
-            z += weights[i] * smearing_funcs[stype - 1](x);
+            z = z + weights[i] * smearing_funcs[stype - 1](x);
         }
     }
     return z - (double)nelec;
 }
 
 // Gaussian
-double gaussian(double x)
+static inline double gaussian(double x)
 {
     return 2.0 - erfc(x);
 }
 
 // Fermi-Dirac
-double fermid(double x)
+static inline double fermid(double x)
 {
     // AZ: flip around x-axis so all smearing func.s called the same way
     x = -x;
@@ -134,7 +112,7 @@ double fermid(double x)
 }
 
 // Hermite delta expansion
-double delthm(double x)
+static inline double delthm(double x)
 {
     if (x > HMCUT)
         return 2.0;
@@ -145,7 +123,7 @@ double delthm(double x)
 }
 
 // Gaussian spline
-double spline(double x)
+static inline double spline(double x)
 {
     // AZ: flip around x-axis so all smearing func.s called the same way
     x = -x;
@@ -156,7 +134,7 @@ double spline(double x)
 }
 
 // Positive Hermite (cold I)
-double poshm(double x)
+static inline double poshm(double x)
 {
     // NM: NOTE: g's are all intended to be normalized to 1!
     // NM: function = 2 * int_minf^x [g(t)] dt
@@ -169,7 +147,7 @@ double poshm(double x)
 }
 
 // Positive Hermite (cold II)
-double poshm2(double x)
+static inline double poshm2(double x)
 {
     // NM: NOTE: g's are all intended to be normalized to 1!
     // NM: function = 2 * int_minf^x [g(t)] dt
