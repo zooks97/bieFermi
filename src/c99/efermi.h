@@ -7,7 +7,7 @@
 
 // parameters
 #define XACC 1e-6      // desired accuracy on the Fermi energy
-#define JMAX 2000      // maximum number of bisections
+#define JMAX 10000     // maximum number of bisections
 #define NMAX 100000    // maximum number of xe1, xe2 redefinitions
 #define FDCUT 30.0     // Fermi-Dirac cutoff
 #define HMCUT 10.0     // Hermite cutoff

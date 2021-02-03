@@ -52,7 +52,11 @@ double efermi(size_t nkpt, size_t nbnd,
     // Set initial Fermi energy guess
     rtb = f < 0.0 ? (dx = x2 - x1, x1) : (dx = x1 - x2, x2);
 
-    // Do bisection for (register int j; j < JMAX; ++j)
+    // Do bisection
+
+    // TODO: This is _way_ faster (~10x), but gives different answer or doesn't
+    // TODO: converge
+    // for (register int j; j < JMAX; ++j)
     // {
     //     if ((fabs(dx) <= XACC) || (fmid == 0.0))
     //     {
@@ -67,7 +71,7 @@ double efermi(size_t nkpt, size_t nbnd,
     //     }
     // }
     // printf("Reached maximum number of bisections.\n");
-    // return 0.0;
+    // return rtb;
 
     j = 0;
     while ((fabs(dx) > XACC) && (fmid != 0.0))
@@ -111,14 +115,12 @@ double smear(size_t nkpt, size_t nbnd,
 }
 
 // Gaussian
-
 double gaussian(double x)
 {
     return 2.0 - erfc(x);
 }
 
 // Fermi-Dirac
-
 double fermid(double x)
 {
     // AZ: flip around x-axis so all smearing func.s called the same way
@@ -143,7 +145,6 @@ double delthm(double x)
 }
 
 // Gaussian spline
-
 double spline(double x)
 {
     // AZ: flip around x-axis so all smearing func.s called the same way
