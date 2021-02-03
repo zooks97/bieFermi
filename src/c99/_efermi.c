@@ -14,8 +14,7 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}}
 
 // Initialize the module
-PyMODINIT_FUNC
-init_efermi(void)
+PyMODINIT_FUNC init_efermi(void)
 {
     PyObject m * = Py_InitModule3("_efermi", module_methods, module_docstring);
     if (m == NULL)
@@ -32,7 +31,7 @@ static PyObject *efermi_efermi(PyObject *self, PyObject *args)
     double swidth;
 
     // Parse the input tuple
-    if (!PyArg_ParseTuple(args, "OOOidi", &bands_obj, &weights_obj, &nelec, &swidth, &stype))
+    if (!PyArg_ParseTuple(args, "OOidi", &bands_obj, &weights_obj, &nelec, &swidth, &stype))
         return NULL;
 
     // Interpret the input objects as numpy arrays
